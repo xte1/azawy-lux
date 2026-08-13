@@ -32,6 +32,18 @@ jobs:
       - name: Configure iOS Platform
         run: flutter create . --platforms=ios --project-name=azawy_lux
 
+      - name: Fix Info.plist Permissions
+        run: |
+          PLIST="ios/Runner/Info.plist"
+          # نستخدم Delete ثم Add لضمان إجبار الصلاحيات على الدخول للملف
+          /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول إلى الكاميرا لالتقاط الصور.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Delete :NSPhotoLibraryAddUsageDescription" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج إذن حفظ الصور في الاستوديو.'" "$PLIST"
+          # إضافة مفتاح إضافي لضمان عمل مكتبة الصور
+          /usr/libexec/PlistBuddy -c "Delete :NSPhotoLibraryUsageDescription" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الوصول لمكتبة الصور.'" "$PLIST"
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -53,6 +65,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: output/LeicaLuxCamera.ipa
-          tag_name: v1.0.0
-          body: "هذا هو ملف التطبيق IPA جاهز للتثبيت المباشر عبر ESign."
+          tag_name: v1.0.1  # قمنا بتغيير الإصدار لـ 1.0.1 لضمان رفع ملف جديد
+          body: "إصدار محدث يتضمن صلاحيات الكاميرا بشكل إجباري."
           token: ${{ secrets.GITHUB_TOKEN }}
