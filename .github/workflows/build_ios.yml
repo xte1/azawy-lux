@@ -27,7 +27,7 @@ jobs:
           cache: true
 
       - name: Configure iOS Platform
-        run: flutter create . --platforms=ios
+        run: flutter create . --platforms=ios --project-name=azawy_lux
 
       - name: Install dependencies
         run: flutter pub get
