@@ -43,7 +43,9 @@ jobs:
           cd build/ios/iphoneos
           mkdir -p Payload
           mv Runner.app Payload/
-          zip -r LeicaLuxCamera.ipa Payload
+          find . -name ".DS_Store" -delete
+          find . -name "__MACOSX" -exec rm -rf {} +
+          zip -r -Z store LeicaLuxCamera.ipa Payload
           mkdir -p ../../../output
           mv LeicaLuxCamera.ipa ../../../output/
 
@@ -52,5 +54,5 @@ jobs:
         with:
           files: output/LeicaLuxCamera.ipa
           tag_name: v1.0.0
-          body: "هذا هو ملف التطبيق IPA جاهز للتثبيت المباشر."
+          body: "هذا هو ملف التطبيق IPA جاهز للتثبيت المباشر عبر ESign."
           token: ${{ secrets.GITHUB_TOKEN }}
