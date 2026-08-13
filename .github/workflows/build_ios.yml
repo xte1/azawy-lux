@@ -28,7 +28,19 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Build iOS IPA (Simulator/Generic Release)
+      - name: Create iOS Platform Files Automatically
+        run: |
+          flutter create . --platforms=ios --org com.example.azawylux
+
+      - name: Fix Info.plist Permissions
+        run: |
+          PLIST="ios/Runner/Info.plist"
+          /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول إلى الكاميرا لالتقاط الصور.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Delete :NSPhotoLibraryAddUsageDescription" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج إذن حفظ الصور في الاستوديو.'" "$PLIST"
+
+      - name: Build iOS IPA
         run: |
           flutter build ios --release --no-codesign
 
