@@ -25,37 +25,27 @@ jobs:
           flutter-version: '3.19.6'
           cache: true
 
-      - name: Configure iOS Platform
-        run: |
-          flutter config --no-analytics
-          cd ios
-          pod install || pod update
-
-      - name: Fix and Verify Info.plist
-        run: |
-          PLIST="ios/Runner/Info.plist"
-          /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$PLIST" || true
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول إلى الكاميرا لالتقاط الصور.'" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Delete :NSPhotoLibraryAddUsageDescription" "$PLIST" || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج إذن حفظ الصور في الاستوديو.'" "$PLIST"
-
-      - name: Install dependencies
+      - name: Get Dependencies
         run: flutter pub get
 
-      - name: Build iOS App (No Codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Build iOS IPA (Simulator/Generic Release)
+        run: |
+          flutter build ios --release --no-codesign
 
-      - name: Package IPA
+      - name: Package and Create IPA
         run: |
           mkdir -p build/ios/ipa/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            cp -r build/ios/iphonesimulator/Runner.app build/ios/ipa/Payload/
+          fi
           cd build/ios/ipa
           zip -r ../../../AzawyLux.ipa Payload
           cd -
 
-      - name: Release IPA
-        uses: ncipollo/release-action@v1
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
         with:
-          artifacts: "AzawyLux.ipa"
-          tag: "v1.0.${{ github.run_number }}"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: AzawyLux-IPA
+          path: AzawyLux.ipa
