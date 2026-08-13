@@ -1,9 +1,12 @@
-name: Build iOS IPA
+name: Build and Release IPA
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -38,14 +41,16 @@ jobs:
       - name: Package IPA
         run: |
           cd build/ios/iphoneos
-          mkdir Payload
+          mkdir -p Payload
           mv Runner.app Payload/
-          zip -r app.ipa Payload
+          zip -r LeicaLuxCamera.ipa Payload
           mkdir -p ../../../output
-          mv app.ipa ../../../output/LeicaLuxCamera.ipa
+          mv LeicaLuxCamera.ipa ../../../output/
 
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
+      - name: Release IPA
+        uses: softprops/action-gh-release@v1
         with:
-          name: ios-ipa
-          path: output/LeicaLuxCamera.ipa
+          files: output/LeicaLuxCamera.ipa
+          tag_name: v1.0.0
+          body: "هذا هو ملف التطبيق IPA جاهز للتثبيت المباشر."
+          token: ${{ secrets.GITHUB_TOKEN }}
