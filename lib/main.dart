@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui';
 import 'dart:io';
 
@@ -40,7 +41,7 @@ class LeicaCameraScreen extends StatefulWidget {
   State<LeicaCameraScreen> createState() => _LeicaCameraScreenState();
 }
 
-class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
+class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isInitialized = false;
   String _errorMessage = '';
@@ -51,7 +52,7 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
   double _exposureOffset = 0.0;
   double _minExposure = 0.0;
   double _maxExposure = 0.0;
-  double _blurIntensity = 0.0; // تحكم بشدة عزل الخلفية
+  double _blurIntensity = 0.0; // شدة عزل الخلفية
   double _aspectRatio = 3.0 / 4.0; // الأبعاد الافتراضية 3:4
   int _selectedFilter = 0; // الفلتر النشط
   
@@ -59,7 +60,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
 
   final List<String> _filterNames = ['Leica M', 'Monochrom', 'Cinematic Warm', 'Moody Noir'];
 
-  // مصفوفات الألوان الخاصة بفلاتر لايكا السينمائية
   final List<ColorFilter> _leicaFilters = [
     const ColorFilter.matrix(<double>[
       1, 0, 0, 0, 0,
@@ -72,25 +72,63 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
       0.33, 0.33, 0.33, 0, 0,
       0.33, 0.33, 0.33, 0, 0,
       0, 0, 0, 1, 0,
-    ]), // مونوكروم أبيض وأسود فخم
+    ]), // مونوكروم
     const ColorFilter.matrix(<double>[
       1.2, 0.1, 0, 0, 10,
       0, 1.1, 0, 0, 5,
       0, 0, 0.9, 0, -10,
       0, 0, 0, 1, 0,
-    ]), // سينمائي دافئ (Warm Tone)
+    ]), // سينمائي دافئ
     const ColorFilter.matrix(<double>[
       1.3, 0, 0, 0, -20,
       0, 1.3, 0, 0, -20,
       0, 0, 1.3, 0, -20,
       0, 0, 0, 1, 0,
-    ]), // نوير غامق عالي التباين
+    ]), // نوير غامق
   ];
 
   @override
   void initState() {
     super.initState();
-    _initCamera();
+    WidgetsBinding.instance.addObserver(this);
+    _checkAndInitCamera();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _controller;
+
+    // التعامل مع دورة حياة التطبيق لإعادة تفعيل الكاميرا عند العودة للتطبيق
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _checkAndInitCamera() async {
+    // طلب صلاحية الكاميرا والميكروفون بانتظام وثبات
+    var cameraStatus = await Permission.camera.request();
+    var micStatus = await Permission.microphone.request();
+
+    if (cameraStatus.isGranted) {
+      await _initCamera();
+    } else {
+      setState(() {
+        _errorMessage = 'تم رفض إذن الكاميرا. يرجى السماح به من إعدادات الهاتف.';
+      });
+    }
   }
 
   Future<void> _initCamera() async {
@@ -106,13 +144,13 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
         );
         await _controller!.initialize();
         
-        // جلب قيم الإضاءة المدعومة من الجهاز
         _minExposure = await _controller!.getMinExposureOffset();
         _maxExposure = await _controller!.getMaxExposureOffset();
         
         if (!mounted) return;
         setState(() {
           _isInitialized = true;
+          _errorMessage = '';
         });
       } else {
         setState(() {
@@ -124,12 +162,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
         _errorMessage = 'خطأ في تشغيل الكاميرا: $e';
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 
   Future<void> _captureAction() async {
@@ -182,11 +214,22 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _checkAndInitCamera,
+                  child: const Text('إعادة المحاولة ومنح الأذونات'),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
+    
     if (!_isInitialized) {
       return const Scaffold(
         body: Center(
@@ -198,7 +241,7 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. معاينة الكاميرا مطبق عليها الفلتر، الأبعاد، وعزل الخلفية
+          // المعاينة الخاصة بالكاميرا
           Center(
             child: AspectRatio(
               aspectRatio: _aspectRatio,
@@ -209,7 +252,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
                     colorFilter: _leicaFilters[_selectedFilter],
                     child: CameraPreview(_controller!),
                   ),
-                  // تأثير عزل الخلفية القوي المتحكم بدرجته
                   if (_blurIntensity > 0)
                     BackdropFilter(
                       filter: ImageFilter.blur(
@@ -223,7 +265,7 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
             ),
           ),
 
-          // 2. شريط التحكم العلوي (العلامة التجارية، أبعاد الإطار، وفلاتر لايكا)
+          // شريط التحكم العلوي
           Positioned(
             top: 45,
             left: 15,
@@ -237,7 +279,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
                       'LEICA LUX M11',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 16),
                     ),
-                    // زر تغيير أبعاد الحجم (مربع أو مستطيل)
                     PopupMenuButton<double>(
                       icon: const Icon(Icons.aspect_ratio, color: Colors.white),
                       onSelected: (val) => setState(() => _aspectRatio = val),
@@ -250,7 +291,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // قائمة الفلاتر السينمائية الأفقية
                 SizedBox(
                   height: 35,
                   child: ListView.builder(
@@ -275,8 +315,8 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
             ),
           ),
 
-          // 3. أشرطة التحكم الجانبية (شدة الإضاءة + شدة عزل الخلفية)
-             Positioned(
+          // أشرطة التحكم الجانبية (الإضاءة والعزل)
+          Positioned(
             right: 15,
             top: 150,
             bottom: 150,
@@ -323,7 +363,7 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> {
             ),
           ),
 
-          // 4. الشريط السفلي (التبديل بين صورة وفيديو، زر الالتقاط، المعرض المصغر)
+          // الشريط السفلي (التقاط، صورة/فيديو، المعرض)
           Positioned(
             bottom: 25,
             left: 0,
