@@ -2,11 +2,8 @@ name: Build and Release IPA
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -25,14 +22,16 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.x'
-          channel: 'stable'
+          flutter-version: '3.19.6'
           cache: true
 
       - name: Configure iOS Platform
-        run: flutter create . --platforms=ios --project-name=azawy_lux
+        run: |
+          flutter config --no-analytics
+          cd ios
+          pod install || pod update
 
-      - name: Add Camera Permissions to Info.plist
+      - name: Fix and Verify Info.plist
         run: |
           PLIST="ios/Runner/Info.plist"
           /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$PLIST" || true
@@ -48,19 +47,15 @@ jobs:
 
       - name: Package IPA
         run: |
-          cd build/ios/iphoneos
-          mkdir -p Payload
-          mv Runner.app Payload/
-          find . -name ".DS_Store" -delete
-          find . -name "__MACOSX" -exec rm -rf {} +
-          zip -r -Z store LeicaLuxCamera.ipa Payload
-          mkdir -p ../../../output
-          mv LeicaLuxCamera.ipa ../../../output/
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ../../../AzawyLux.ipa Payload
+          cd -
 
       - name: Release IPA
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          files: output/LeicaLuxCamera.ipa
-          tag_name: v1.0.3
-          body: "إصدار v1.0.3 - بدون مكتبة أذونات خارجية واعتماد الطلب التلقائي من نظام iOS."
+          artifacts: "AzawyLux.ipa"
+          tag: "v1.0.${{ github.run_number }}"
           token: ${{ secrets.GITHUB_TOKEN }}
