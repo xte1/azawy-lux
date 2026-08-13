@@ -46,15 +46,14 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
   bool _isInitialized = false;
   String _errorMessage = '';
   
-  // حالات التحكم
   bool _isVideoMode = false;
   bool _isRecording = false;
   double _exposureOffset = 0.0;
   double _minExposure = 0.0;
   double _maxExposure = 0.0;
-  double _blurIntensity = 0.0; // شدة عزل الخلفية
-  double _aspectRatio = 3.0 / 4.0; // الأبعاد الافتراضية 3:4
-  int _selectedFilter = 0; // الفلتر النشط
+  double _blurIntensity = 0.0; 
+  double _aspectRatio = 3.0 / 4.0; 
+  int _selectedFilter = 0; 
   
   String? _lastMediaPath;
 
@@ -66,25 +65,25 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
       0, 1, 0, 0, 0,
       0, 0, 1, 0, 0,
       0, 0, 0, 1, 0,
-    ]), // طبيعي
+    ]),
     const ColorFilter.matrix(<double>[
       0.33, 0.33, 0.33, 0, 0,
       0.33, 0.33, 0.33, 0, 0,
       0.33, 0.33, 0.33, 0, 0,
       0, 0, 0, 1, 0,
-    ]), // مونوكروم
+    ]),
     const ColorFilter.matrix(<double>[
       1.2, 0.1, 0, 0, 10,
       0, 1.1, 0, 0, 5,
       0, 0, 0.9, 0, -10,
       0, 0, 0, 1, 0,
-    ]), // سينمائي دافئ
+    ]),
     const ColorFilter.matrix(<double>[
       1.3, 0, 0, 0, -20,
       0, 1.3, 0, 0, -20,
       0, 0, 1.3, 0, -20,
       0, 0, 0, 1, 0,
-    ]), // نوير غامق
+    ]),
   ];
 
   @override
@@ -105,7 +104,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final CameraController? cameraController = _controller;
 
-    // التعامل مع دورة حياة التطبيق لإعادة تفعيل الكاميرا عند العودة للتطبيق
     if (cameraController == null || !cameraController.value.isInitialized) {
       return;
     }
@@ -118,7 +116,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
   }
 
   Future<void> _checkAndInitCamera() async {
-    // طلب صلاحية الكاميرا والميكروفون بانتظام وثبات
     var cameraStatus = await Permission.camera.request();
     var micStatus = await Permission.microphone.request();
 
@@ -241,7 +238,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
     return Scaffold(
       body: Stack(
         children: [
-          // المعاينة الخاصة بالكاميرا
           Center(
             child: AspectRatio(
               aspectRatio: _aspectRatio,
@@ -265,7 +261,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
             ),
           ),
 
-          // شريط التحكم العلوي
           Positioned(
             top: 45,
             left: 15,
@@ -315,7 +310,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
             ),
           ),
 
-          // أشرطة التحكم الجانبية (الإضاءة والعزل)
           Positioned(
             right: 15,
             top: 150,
@@ -363,7 +357,6 @@ class _LeicaCameraScreenState extends State<LeicaCameraScreen> with WidgetsBindi
             ),
           ),
 
-          // الشريط السفلي (التقاط، صورة/فيديو، المعرض)
           Positioned(
             bottom: 25,
             left: 0,
