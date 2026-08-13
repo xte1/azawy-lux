@@ -25,12 +25,16 @@ jobs:
           flutter-version: '3.19.6'
           cache: true
 
+      - name: Fix Project Name in pubspec.yaml
+        run: |
+          sed -i '' 's/name: azawy-lux/name: azawy_lux/g' pubspec.yaml
+
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Create iOS Platform Files Automatically
+      - name: Create iOS Platform Files
         run: |
-          flutter create . --platforms=ios --org com.example.azawylux
+          flutter create . --platforms=ios --org com.example
 
       - name: Fix Info.plist Permissions
         run: |
@@ -40,18 +44,14 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :NSPhotoLibraryAddUsageDescription" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج إذن حفظ الصور في الاستوديو.'" "$PLIST"
 
-      - name: Build iOS IPA
+      - name: Build iOS Simulator App (No Signing Required)
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --simulator --release
 
       - name: Package and Create IPA
         run: |
           mkdir -p build/ios/ipa/Payload
-          if [ -d "build/ios/iphoneos/Runner.app" ]; then
-            cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
-          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
-            cp -r build/ios/iphonesimulator/Runner.app build/ios/ipa/Payload/
-          fi
+          cp -r build/ios/iphonesimulator/Runner.app build/ios/ipa/Payload/
           cd build/ios/ipa
           zip -r ../../../AzawyLux.ipa Payload
           cd -
